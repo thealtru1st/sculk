@@ -7,8 +7,6 @@ edition = "2021"
 license = "MIT"
 rust-version = "1.85"
 repository = "https://github.com/thealtru1st/sculk"
-homepage = "https://github.com/thealtru1st/sculk"
-readme = "README.md"
 
 [workspace.dependencies]
 anyhow = "1.0"

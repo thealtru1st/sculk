@@ -183,6 +183,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85bc9657773828b90eeb625adff10eeac83cc21bbfd8e23a03eaa8a33c9e28d9"
 dependencies = [
  "cc",
+ "libc",
  "pkg-config",
  "vcpkg",
 ]
@@ -256,6 +257,8 @@ name = "sculk"
 version = "0.1.0"
 dependencies = [
  "flate2",
+ "libc",
+ "libz-sys",
  "mio",
 ]
 
@@ -266,6 +269,7 @@ dependencies = [
  "anyhow",
  "clap",
  "flate2",
+ "sculk",
  "serde",
  "serde_json",
 ]
