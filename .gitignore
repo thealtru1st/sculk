@@ -1,0 +1,31 @@
+# Data-generator output and packaging
+/dist/
+/generated/
+
+# Build output
+/target/
+/target-static/
+/target-instrumented/
+/target-prof/
+
+# Benchmark runs (results are written under benchmarks/runs/)
+/benchmarks/runs/
+*.log
+*.profraw
+*.profdata
+perf.data*
+flamegraph.svg
+
+# World saves
+*.sculk
+*.sculk.tmp
+
+# Python, editors, OS
+__pycache__/
+*.py[cod]
+.env
+.env.*
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

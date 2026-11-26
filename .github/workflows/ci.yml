@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install -y zlib1g-dev
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Lint
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
+      - name: Lint allocation instrumentation
+        run: cargo clippy --locked -p sculk --all-targets --features allocation-metrics -- -D warnings
+      - name: Test
+        run: cargo test --locked --workspace --release
+      - name: Test allocation instrumentation
+        run: cargo test --locked -p sculk --release --features allocation-metrics
+      - name: Check scripts
+        run: |
+          python3 -m py_compile scripts/*.py
+          bash -n bench
+      - name: Gameplay self-check
+        env:
+          PLAYERS: "1 5"
+          DURATION: "6"
+        run: ./bench gameplay
+      - name: Benchmark smoke run
+        env:
+          PLAYERS: "50"
+          DURATION: "10"
+          WORKLOAD: mixed
+        run: |
+          ./bench sculk
+          cat benchmarks/runs/sculk/50-player.json
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85
+      - uses: Swatinem/rust-cache@v2
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install -y zlib1g-dev
+      - name: Build with the minimum supported Rust version
+        run: cargo build --locked --workspace

@@ -1,0 +1,24 @@
+[package]
+name = "sculk"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "../../README.md"
+description = "A tiny, fast Minecraft Java Edition server"
+keywords = ["minecraft", "server", "game-server", "mio"]
+categories = ["games", "network-programming"]
+publish = false
+
+[features]
+allocation-metrics = []
+
+[dependencies]
+flate2.workspace = true
+libz-sys.workspace = true
+mio.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true

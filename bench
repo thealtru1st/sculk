@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# Benchmark and verification wrapper. Run ./bench help for the command list.
+set -euo pipefail
+
+target="${1:-help}"
+players="${PLAYERS:-1 10 100}"
+duration="${DURATION:-15}"
+host="${HOST:-127.0.0.1}"
+port="${PORT:-25565}"
+workload="${WORKLOAD:-mixed}"
+trials="${TRIALS:-1}"
+sculk_bin="${SCULK_BIN:-target/release/sculk}"
+sculk_static_bin="${SCULK_STATIC_BIN:-target-static/release/sculk}"
+sculk_instrumented_bin="${SCULK_INSTRUMENTED_BIN:-target-instrumented/release/sculk}"
+results="${RESULTS:-benchmarks/runs}"
+
+build() {
+  cargo build --release --workspace >/dev/null
+}
+
+build_static() {
+  RUSTFLAGS='-C target-feature=+crt-static' \
+    cargo build --release -p sculk --target-dir target-static >/dev/null
+}
+
+build_instrumented() {
+  cargo build --release -p sculk --features allocation-metrics \
+    --target-dir target-instrumented >/dev/null
+  cargo build --release -p sculk-bench >/dev/null
+}
+
+run() {
+  local name="$1" server_cmd="$2" out_dir="$3"
+  python3 scripts/run_bench.py \
+    --name "$name" \
+    --server-cmd "$server_cmd" \
+    --host "$host" \
+    --port "$port" \
+    --players $players \
+    --duration "$duration" \
+    --workload "$workload" \
+    --trials "$trials" \
+    --out-dir "$out_dir"
+}
+
+case "$target" in
+  sculk)
+    build
+    run sculk "$sculk_bin --host $host --port $port" "$results/sculk"
+    ;;
+  sculk-static)
+    build
+    build_static
+    run sculk-static "$sculk_static_bin --host $host --port $port" "$results/sculk-static"
+    ;;
+  sculk-instrumented)
+    build_instrumented
+    run sculk-instrumented "$sculk_instrumented_bin --host $host --port $port" \
+      "$results/sculk-instrumented"
+    ;;
+  scale)
+    if [[ -z "${PLAYERS+x}" ]]; then players="1 10 50 100 500 1000"; fi
+    if [[ -z "${TRIALS+x}" ]]; then trials=3; fi
+    build_instrumented
+    run sculk-scale "$sculk_instrumented_bin --host $host --port $port" "$results/scale"
+    ;;
+  terrain)
+    cargo build --release -p sculk --bin sculk-terrain \
+      --features allocation-metrics --target-dir target-instrumented >/dev/null
+    target-instrumented/release/sculk-terrain --chunks "${CHUNKS:-10000}"
+    ;;
+  gameplay)
+    # Self-check: every gameplay feature must deliver work with zero errors.
+    if [[ -z "${PLAYERS+x}" ]]; then players=3; fi
+    if [[ -z "${DURATION+x}" ]]; then duration=6; fi
+    workload=gameplay
+    build
+    run gameplay "$sculk_bin --host $host --port $port" "$results/gameplay"
+    python3 scripts/check_gameplay.py "$results/gameplay"
+    ;;
+  memory)
+    build
+    build_static
+    python3 scripts/run_memory_cap.py \
+      --server-bin "$sculk_static_bin" \
+      --bench-bin target/release/sculk-bench \
+      --host "$host" \
+      --port "$port" \
+      --duration "$duration" \
+      --workload "${MEMORY_WORKLOAD:-gameplay}" \
+      --trials "${MEMORY_TRIALS:-1}" \
+      --players "${MEMORY_PLAYERS:-1}" \
+      --limits ${LIMITS:-1M 768K 512K}
+    ;;
+  compare)
+    if [[ -z "${BASELINE:-}" || -z "${CANDIDATE:-}" ]]; then
+      echo "Set BASELINE and CANDIDATE to two result directories." >&2
+      exit 1
+    fi
+    python3 scripts/compare_bench.py "$BASELINE" "$CANDIDATE"
+    ;;
+  help|-h|--help)
+    cat <<'USAGE'
+usage: ./bench COMMAND
+
+  sculk               benchmark the release server (PLAYERS, DURATION, WORKLOAD, TRIALS)
+  sculk-static        same, statically linked
+  sculk-instrumented  same, with allocation counters
+  scale               repeated 1..1000-client sweep with medians and variance
+  terrain             chunk generation + encoding throughput
+  gameplay            self-check that every gameplay feature works
+  memory              hard cgroup memory-limit sweep (Linux + systemd)
+  compare             compare two result directories, e.g. before/after a change
+USAGE
+    ;;
+  *)
+    echo "unknown command: $target (try ./bench help)" >&2
+    exit 2
+    ;;
+esac

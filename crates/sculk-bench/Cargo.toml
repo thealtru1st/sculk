@@ -1,0 +1,17 @@
+[package]
+name = "sculk-bench"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Synthetic-client load generator and checks for Sculk"
+publish = false
+
+[dependencies]
+sculk = { path = "../sculk" }
+anyhow.workspace = true
+clap.workspace = true
+flate2.workspace = true
+serde.workspace = true
+serde_json.workspace = true

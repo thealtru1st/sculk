@@ -1,0 +1,4 @@
+* text=auto eol=lf
+*.png binary
+crates/sculk/src/vanilla.rs linguist-generated=true
+crates/sculk/src/vanilla_items.rs linguist-generated=true
